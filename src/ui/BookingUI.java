@@ -18,7 +18,19 @@ public class BookingUI extends JFrame {
         JTextField source = new JTextField(10);
         JTextField dest = new JTextField(10);
         JTextField distance = new JTextField(5);
-        JButton book = new JButton("Confirm Booking");
+        JButton mapBtn = new JButton("Open Map");
+add(mapBtn);
+
+mapBtn.addActionListener(e -> {
+    try {
+        // Opens your HTML in browser
+        java.awt.Desktop.getDesktop().browse(
+            new java.io.File("web/map.html").toURI()
+        );
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+});
 
         add(new JLabel("Transport"));
         add(transport);
