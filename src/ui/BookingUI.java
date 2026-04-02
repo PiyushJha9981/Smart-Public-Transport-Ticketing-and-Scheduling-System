@@ -19,6 +19,9 @@ public class BookingUI extends JFrame {
         setTitle("Book Ticket");
         setSize(400, 300);
         setLayout(new java.awt.FlowLayout());
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setResizable(false);
 
         // Predefined locations
         String[] locations = {

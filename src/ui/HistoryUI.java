@@ -14,6 +14,8 @@ public class HistoryUI extends JFrame {
 
         setTitle("Journey History");
         setSize(700, 400);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
 
         String[] columns = {
                 "Ticket ID",
