@@ -1,171 +1,97 @@
 package ui;
 
 import javax.swing.*;
-import service.FareCalculator;
-import service.QRGenerator;
-import db.DBConnection;
-
-import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 
 public class BookingUI extends JFrame {
 
-    // Distance table
-    private Map<String, Double> distanceTable = new HashMap<>();
+    private static final String[] CITIES = {
+            "New Delhi",
+            "Greater Noida",
+            "Noida Sector 62",
+            "Connaught Place",
+            "Rajiv Chowk",
+            "Delhi Airport",
+            "Ghaziabad",
+            "Faridabad"
+    };
 
     public BookingUI(String user) {
-
-        setTitle("Book Ticket");
-        setSize(400, 300);
-        setLayout(new java.awt.FlowLayout());
+        setTitle("Search Buses");
+        setSize(900, 600);
+        setMinimumSize(new Dimension(900, 600));
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
-        setResizable(false);
 
-        // Predefined locations
-        String[] locations = {
-                "New Delhi",
-                "Greater Noida",
-                "Noida Sector 62",
-                "Connaught Place",
-                "Rajiv Chowk",
-                "Delhi Airport",
-                "Ghaziabad",
-                "Faridabad"
-        };
+        JPanel root = new JPanel(new BorderLayout(12, 12));
+        root.setBorder(new EmptyBorder(24, 24, 24, 24));
 
-        JComboBox<String> source = new JComboBox<>(locations);
-        JComboBox<String> dest = new JComboBox<>(locations);
+        JLabel heading = new JLabel("Search Buses");
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 22f));
+        root.add(heading, BorderLayout.NORTH);
 
-        String[] transports = {"Bus", "Metro", "Taxi", "Train"};
-        JComboBox<String> transport = new JComboBox<>(transports);
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JButton book = new JButton("Confirm Booking");
+        JComboBox<String> fromCity = new JComboBox<>(CITIES);
+        JComboBox<String> toCity = new JComboBox<>(CITIES);
 
-        // Build distance table
-        initializeDistances();
+        SpinnerDateModel dateModel = new SpinnerDateModel(new Date(), null, null, java.util.Calendar.DAY_OF_MONTH);
+        JSpinner dateSpinner = new JSpinner(dateModel);
+        dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd"));
 
-        // UI Layout
-        add(new JLabel("Transport"));
-        add(transport);
+        JButton findBuses = new JButton("Find Buses");
+        findBuses.setPreferredSize(new Dimension(180, 44));
 
-        add(new JLabel("Source"));
-        add(source);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        form.add(new JLabel("From (City)"), gbc);
+        gbc.gridx = 1;
+        form.add(fromCity, gbc);
 
-        add(new JLabel("Destination"));
-        add(dest);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        form.add(new JLabel("To (City)"), gbc);
+        gbc.gridx = 1;
+        form.add(toCity, gbc);
 
-        add(book);
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        form.add(new JLabel("Date"), gbc);
+        gbc.gridx = 1;
+        form.add(dateSpinner, gbc);
 
-        // Booking Logic
-        book.addActionListener(e -> {
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        form.add(findBuses, gbc);
 
-            try {
+        root.add(form, BorderLayout.CENTER);
+        setContentPane(root);
 
-                String src = source.getSelectedItem().toString();
-                String dst = dest.getSelectedItem().toString();
+        findBuses.addActionListener(e -> {
+            String from = String.valueOf(fromCity.getSelectedItem());
+            String to = String.valueOf(toCity.getSelectedItem());
 
-                if(src.equals(dst)) {
-                    JOptionPane.showMessageDialog(null,
-                            "Source and Destination cannot be same!");
-                    return;
-                }
-
-                double distance = getDistance(src, dst);
-
-                double fare = FareCalculator.calculateFare(
-                        transport.getSelectedItem().toString(),
-                        distance
-                );
-
-                Connection con = DBConnection.getConnection();
-
-                PreparedStatement ps = con.prepareStatement(
-                        "INSERT INTO tickets(user_id,transport_type,source,destination,fare,issue_time) VALUES(?,?,?,?,?,NOW())",
-                        Statement.RETURN_GENERATED_KEYS
-                );
-
-                ps.setInt(1, 1);
-                ps.setString(2, transport.getSelectedItem().toString());
-                ps.setString(3, src);
-                ps.setString(4, dst);
-                ps.setDouble(5, fare);
-
-                ps.executeUpdate();
-
-                ResultSet rs = ps.getGeneratedKeys();
-                rs.next();
-                int ticketId = rs.getInt(1);
-
-                // Insert journey history
-                PreparedStatement ps2 = con.prepareStatement(
-                        "INSERT INTO journey_history(ticket_id, planned_time, actual_time, delay_minutes) VALUES(?, NOW(), NOW(), ?)"
-                );
-
-                int delay = (int)(Math.random() * 10);
-
-                ps2.setInt(1, ticketId);
-                ps2.setInt(2, delay);
-
-                ps2.executeUpdate();
-
-                String qrPath = QRGenerator.generateQR(
-                        "Ticket ID: " + ticketId,
-                        ticketId
-                );
-
-                JOptionPane.showMessageDialog(null,
-                        "Ticket Booked!\nDistance: " + distance +
-                        " km\nFare: ₹" + fare);
-
-                // Show QR Code
-                ImageIcon icon = new ImageIcon(qrPath);
-
-                JFrame qrFrame = new JFrame("Ticket QR");
-                qrFrame.setSize(300, 300);
-                qrFrame.add(new JLabel(icon));
-                qrFrame.setVisible(true);
-
-            } catch (Exception ex) {
-
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(null,
-                        "Error: " + ex.getMessage());
-
+            if (from.equals(to)) {
+                JOptionPane.showMessageDialog(this, "From and To cannot be the same.", "Invalid", JOptionPane.ERROR_MESSAGE);
+                return;
             }
 
+            LocalDate travelDate = toLocalDate((Date) dateSpinner.getValue());
+            new AvailableBusesUI(user, from, to, travelDate);
+            dispose();
         });
 
         setVisible(true);
     }
 
-    // Initialize distance table
-    private void initializeDistances() {
-
-        addDistance("New Delhi","Greater Noida",40);
-        addDistance("New Delhi","Noida Sector 62",20);
-        addDistance("New Delhi","Connaught Place",5);
-        addDistance("New Delhi","Rajiv Chowk",4);
-        addDistance("New Delhi","Delhi Airport",16);
-        addDistance("New Delhi","Ghaziabad",25);
-        addDistance("New Delhi","Faridabad",30);
-
-        addDistance("Greater Noida","Noida Sector 62",18);
-        addDistance("Greater Noida","Connaught Place",35);
-        addDistance("Greater Noida","Delhi Airport",55);
-    }
-
-    private void addDistance(String a,String b,double dist) {
-
-        distanceTable.put(a+"-"+b,dist);
-        distanceTable.put(b+"-"+a,dist);
-
-    }
-
-    private double getDistance(String a,String b) {
-
-        return distanceTable.getOrDefault(a+"-"+b,25.0);
-
+    private static LocalDate toLocalDate(Date date) {
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 }

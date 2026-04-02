@@ -1,69 +1,68 @@
 package ui;
 
+import model.BusBooking;
+import service.BookingHistoryService;
+
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import java.sql.*;
-import db.DBConnection;
+import java.awt.*;
+import java.util.List;
 
 public class HistoryUI extends JFrame {
 
-    JTable table;
-    DefaultTableModel model;
-
     public HistoryUI(String user) {
-
-        setTitle("Journey History");
-        setSize(700, 400);
+        setTitle("History Ticket");
+        setSize(900, 600);
+        setMinimumSize(new Dimension(900, 600));
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
+        JPanel root = new JPanel(new BorderLayout(12, 12));
+        root.setBorder(new EmptyBorder(24, 24, 24, 24));
+
+        JLabel heading = new JLabel("History Ticket");
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 22f));
+        root.add(heading, BorderLayout.NORTH);
+
         String[] columns = {
-                "Ticket ID",
-                "Transport",
-                "Source",
-                "Destination",
-                "Planned Time",
-                "Actual Time",
-                "Delay (Minutes)"
+                "User",
+                "From",
+                "To",
+                "Date",
+                "Bus",
+                "Timing",
+                "Seats",
+                "Total Price",
+                "Booked At"
         };
 
-        model = new DefaultTableModel(columns, 0);
-        table = new JTable(model);
-
-        loadHistory();
-
-        add(new JScrollPane(table));
-        setVisible(true);
-    }
-
-    private void loadHistory() {
-        try {
-            Connection con = DBConnection.getConnection();
-
-            String query =
-                    "SELECT t.id, t.transport_type, t.source, t.destination, " +
-                    "j.planned_time, j.actual_time, j.delay_minutes " +
-                    "FROM tickets t " +
-                    "JOIN journey_history j ON t.id = j.ticket_id";
-
-            PreparedStatement ps = con.prepareStatement(query);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                Object[] row = {
-                        rs.getInt("id"),
-                        rs.getString("transport_type"),
-                        rs.getString("source"),
-                        rs.getString("destination"),
-                        rs.getTimestamp("planned_time"),
-                        rs.getTimestamp("actual_time"),
-                        rs.getInt("delay_minutes")
-                };
-                model.addRow(row);
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
             }
+        };
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        List<BusBooking> bookings = BookingHistoryService.forUser(user);
+        for (BusBooking b : bookings) {
+            model.addRow(new Object[]{
+                    b.getUsername(),
+                    b.getFromCity(),
+                    b.getToCity(),
+                    b.getTravelDate(),
+                    b.getBusName(),
+                    b.getTiming(),
+                    String.join(", ", b.getSeatNumbers()),
+                    "₹" + b.getTotalPrice(),
+                    b.getBookedAt()
+            });
         }
+
+        JTable table = new JTable(model);
+        root.add(new JScrollPane(table), BorderLayout.CENTER);
+
+        setContentPane(root);
+        setVisible(true);
     }
 }

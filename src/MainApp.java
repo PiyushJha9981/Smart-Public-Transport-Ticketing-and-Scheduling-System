@@ -1,7 +1,9 @@
 import ui.LoginUI;
 
+import javax.swing.*;
+
 public class MainApp {
     public static void main(String[] args) {
-        new LoginUI();
+        SwingUtilities.invokeLater(LoginUI::new);
     }
 }
